@@ -1,0 +1,17 @@
+{
+    "name": "doyzheng/yii2-service",
+    "authors": [
+        {
+            "name": "zdyphpzheng",
+            "email": "zdyphpzheng@qqdyw.net"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "doyzheng\\yii2service\\": "src/"
+        }
+    },
+    "require": {
+        "php": ">=5.5.0"
+    }
+}
