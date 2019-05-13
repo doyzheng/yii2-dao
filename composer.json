@@ -1,9 +1,9 @@
 {
-    "name": "doyzheng/yii2-service",
+    "name": "doyzheng/yii2-dao",
     "authors": [
         {
-            "name": "zdyphpzheng",
-            "email": "zdyphpzheng@qqdyw.net"
+            "name": "doyzheng",
+            "email": "doyzheng@qq.com"
         }
     ],
     "autoload": {
