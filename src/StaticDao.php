@@ -1,6 +1,6 @@
 <?php
 
-namespace app\tests;
+namespace doyzheng\yii2dao;
 
 use yii\base\Model;
 use yii\base\UnknownClassException;

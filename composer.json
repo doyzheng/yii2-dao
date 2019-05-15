@@ -2,13 +2,13 @@
     "name": "doyzheng/yii2-dao",
     "authors": [
         {
-            "name": "doyzheng",
-            "email": "doyzheng@qq.com"
+            "name": "zdyphpzheng",
+            "email": "zdyphpzheng@qqdyw.net"
         }
     ],
     "autoload": {
         "psr-4": {
-            "doyzheng\\yii2service\\": "src/"
+            "doyzheng\\yii2-dao\\": "src/"
         }
     },
     "require": {

@@ -1,6 +1,6 @@
 <?php
 
-namespace app\tests;
+namespace doyzheng\yii2dao;
 
 use Exception;
 use Throwable;
