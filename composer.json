@@ -8,7 +8,7 @@
     ],
     "autoload": {
         "psr-4": {
-            "doyzheng\\yii2-dao\\": "src/"
+            "doyzheng\\yii2dao\\": "src/"
         }
     },
     "require": {
