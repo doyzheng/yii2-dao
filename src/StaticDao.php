@@ -10,13 +10,16 @@ use yii\db\Transaction;
 use yii\helpers\ArrayHelper;
 
 /**
+ * 数据访问层静态方法类
  * Class StaticDao
- * @package app\tests
+ * @mixin Dao
+ * @package doyzheng\yii2dao
  * @method static string getPk()
  * @method static ActiveQuery find()
  * @method static ActiveQuery getQuery($where = [], $fields = '', $order = '')
  * @method static array getWhere($where)
  * @method static array getErrors()
+ * @method static array getError()
  * @method static void setErrors($error)
  * @method static Transaction beginTransaction()
  * @method static int getAutoIncrement()
@@ -44,7 +47,6 @@ use yii\helpers\ArrayHelper;
  * @method static bool inc($where, $field, $step = 1)
  * @method static bool dec($where, $field, $step = 1)
  * @method static mixed raw($value)
- *
  */
 abstract class StaticDao
 {
@@ -62,7 +64,7 @@ abstract class StaticDao
     /**
      * @var bool
      */
-    protected static $asArray = false;
+    protected static $asArray = true;
     
     /**
      * 调用当前静态方法时传入的参数
@@ -193,7 +195,7 @@ abstract class StaticDao
      */
     protected static function toArray($result)
     {
-        if (static::asArray() && $result instanceof Model || is_array($result)) {
+        if (static::asArray() && ($result instanceof Model || is_array($result))) {
             return ArrayHelper::toArray($result);
         }
         return $result;
@@ -237,13 +239,11 @@ abstract class StaticDao
      * 查询结果转换为数组
      * @param bool $value
      * @return bool
-     * @throws UnknownClassException
      */
-    public static function asArray($value = true)
+    public static function asArray($value = null)
     {
-        if (static::$asArray != $value) {
+        if ($value !== null) {
             static::$asArray = $value;
-            static::getDao()->setAsArray($value);
         }
         return static::$asArray;
     }

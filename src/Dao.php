@@ -2,6 +2,7 @@
 
 namespace doyzheng\yii2dao;
 
+use app\components\ArrayAccess;
 use Exception;
 use Throwable;
 use yii\db\ActiveRecord;
@@ -9,8 +10,9 @@ use yii\db\Expression;
 use yii\helpers\ArrayHelper;
 
 /**
+ * 数据访问层
  * Class Dao
- * @package app\tests
+ * @package doyzheng\yii2dao
  */
 class Dao extends DaoAbstract
 {
@@ -20,13 +22,16 @@ class Dao extends DaoAbstract
      * @param array  $where
      * @param string $fields
      * @param mixed  $order
-     * @return ActiveRecord
+     * @return ActiveRecord|array
      */
     public function get($where = [], $fields = '', $order = '')
     {
         // 如果条件是数字,默认使用主键查询
         $where = is_numeric($where) ? [$this->pk => $where] : $where;
-        return $this->getQuery($where, $fields, $order)->one();
+        if ($row = $this->getQuery($where, $fields, $order)->one()) {
+            return $row;
+        }
+        return [];
     }
     
     /**
@@ -38,7 +43,10 @@ class Dao extends DaoAbstract
      */
     public function getAll($where = [], $fields = '', $order = '')
     {
-        return $this->getQuery($where, $fields, $order)->all();
+        if ($rows = $this->getQuery($where, $fields, $order)->all()) {
+            return $rows;
+        }
+        return [];
     }
     
     /**
@@ -55,7 +63,11 @@ class Dao extends DaoAbstract
         $page   = $page < 1 ? 1 : $page;
         $limit  = $limit < 1 ? 10 : $limit;
         $offset = ($page - 1) * $limit;
-        return $this->getQuery($where, $fields, $order)->offset($offset)->limit($limit)->all();
+        $rows   = $this->getQuery($where, $fields, $order)->offset($offset)->limit($limit)->all();
+        if ($rows) {
+            return $rows;
+        }
+        return [];
     }
     
     /**
@@ -184,7 +196,10 @@ class Dao extends DaoAbstract
      */
     public function updateAll($where, $data)
     {
-        $models = $this->getQuery($where)->asArray(false)->all();
+        $fields   = array_keys($data);
+        $fields[] = $this->pk;
+        // 只查询待更新的数据字段
+        $models = $this->getQuery($where, $fields)->asArray(false)->all();
         if ($models) {
             $tr = $this->beginTransaction();
             try {
@@ -297,15 +312,20 @@ class Dao extends DaoAbstract
      */
     public function inc($where, $field, $step = 1)
     {
-        $fields = is_string($field) ? explode(',', $field) : $field;
         $upData = [];
-        foreach ($fields as $field => $val) {
-            if (is_numeric($field)) {
-                $field = $val;
-            } else {
-                $step = $val;
-            }
+        if (is_string($field)) {
             $upData[$field] = $this->raw("$field + $step");
+        }
+        if (is_array($field)) {
+            foreach ($field as $key => $val) {
+                // 如果是索引数组
+                if (is_numeric($key) && is_string($val)) {
+                    $upData[$val] = $this->raw("$val + $step");
+                } // 关联数组
+                elseif (is_string($key) && is_numeric($val)) {
+                    $upData[$key] = $this->raw("$key + $val");
+                }
+            }
         }
         return boolval($this->model->updateAll($upData, $where));
     }
@@ -330,15 +350,20 @@ class Dao extends DaoAbstract
      */
     public function dec($where, $field, $step = 1)
     {
-        $fields = is_string($field) ? explode(',', $field) : $field;
         $upData = [];
-        foreach ($fields as $field => $val) {
-            if (is_numeric($field)) {
-                $field = $val;
-            } else {
-                $step = $val;
+        if (is_string($field)) {
+            $upData[$field] = $this->raw("$field + $step");
+        }
+        if (is_array($field)) {
+            foreach ($field as $key => $val) {
+                // 如果是索引数组
+                if (is_numeric($key) && is_string($val)) {
+                    $upData[$val] = $this->raw("$val + $step");
+                } // 关联数组
+                elseif (is_string($key) && is_numeric($val)) {
+                    $upData[$key] = $this->raw("$key - $val");
+                }
             }
-            $upData[$field] = $this->raw("$field - $step");
         }
         return boolval($this->model->updateAll($upData, $where));
     }

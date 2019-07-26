@@ -2,16 +2,17 @@
 
 namespace doyzheng\yii2dao;
 
-use Exception;
 use Yii;
+use Exception;
 use yii\base\Component;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
 use yii\db\Transaction;
 
 /**
+ * 数据访问层抽象类
  * Class Dao
- * @package app\tests
+ * @package doyzheng\yii2dao
  * @property ActiveRecord model
  * @property string       pk
  * @property string       defaultOrder
@@ -38,7 +39,7 @@ abstract class DaoAbstract extends Component
     /**
      * @var bool 是否保存sql语句
      */
-    public $isSaveSql = false;
+    public $isSaveSql = YII_DEBUG;
     
     /**
      * 保存执行过的sql
@@ -107,33 +108,6 @@ abstract class DaoAbstract extends Component
     
     /**
      * 获取查询对象
-     * @param array  $where
-     * @param string $fields
-     * @param string $order
-     * @return ActiveQuery
-     */
-    public function getQuery($where = [], $fields = '', $order = '')
-    {
-        $activeQuery = $this->find();
-        // 如果条件是数字,默认使用主键查询
-        $where = is_numeric($where) ? [$this->pk => $where] : $where;
-        $activeQuery->where($this->getWhere($where));
-        // 查询字段
-        $activeQuery->select($fields);
-        // 排序方式
-        $activeQuery->orderBy($order ? $order : $this->defaultOrder);
-        // 字段使用别名时
-        $asArray = is_string($fields) && stripos($fields, ' as ') !== false;
-        $activeQuery->asArray($asArray ? $asArray : $this->asArray);
-        // 保存执行的SQL语句
-        if ($this->isSaveSql) {
-            $this->setSql($activeQuery->createCommand()->getRawSql());
-        }
-        return $activeQuery;
-    }
-    
-    /**
-     * 获取查询对象
      * @return ActiveQuery
      */
     public function find()
@@ -148,6 +122,34 @@ abstract class DaoAbstract extends Component
     public function getModel()
     {
         return new $this->modelClass;
+    }
+    
+    /**
+     * 获取查询对象
+     * @param array|string $where  查询条件支持数组或主键
+     * @param array|string $fields 查询的字段
+     * @param string|array $order  查询结果排序方式
+     * @return ActiveQuery
+     */
+    public function getQuery($where = [], $fields = '', $order = '')
+    {
+        $query = $this->find();
+        // 如果条件是数字类型,使用主键查询
+        $where = is_numeric($where) ? [$this->pk => $where] : $where;
+        $query->where($this->getWhere($where));
+        // 查询的字段, 如果是数组转化成字符串
+        $fields = is_array($fields) ? join(',', $fields) : $fields;
+        $query->select($fields);
+        // 字段使用别名时,不能返回模型对象
+        $asArray = stripos($fields, ' as ') !== false;
+        $query->asArray($asArray ? $asArray : $this->asArray);
+        // 排序方式
+        $query->orderBy($order ? $order : $this->defaultOrder);
+        // 保存执行的SQL语句
+        if ($this->isSaveSql) {
+            $this->setSql($query->createCommand()->getRawSql());
+        }
+        return $query;
     }
     
     /**
@@ -201,6 +203,16 @@ abstract class DaoAbstract extends Component
     public function setErrors($error)
     {
         $this->errors[] = $error;
+    }
+    
+    /**
+     * 获取第一个错误信息
+     * @return mixed
+     */
+    public function getError()
+    {
+        $error = $this->errors;
+        return array_shift($error);
     }
     
     /**
@@ -320,7 +332,7 @@ abstract class DaoAbstract extends Component
     public function getAttributes()
     {
         if (!$this->_attributes) {
-            $this->_attributes = array_keys($this->model->getAttributes());
+            $this->_attributes = $this->model->attributes();
         }
         return $this->_attributes;
     }
