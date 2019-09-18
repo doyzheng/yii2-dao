@@ -2,7 +2,6 @@
 
 namespace doyzheng\yii2dao;
 
-use app\components\ArrayAccess;
 use Exception;
 use Throwable;
 use yii\db\ActiveRecord;
@@ -19,7 +18,7 @@ class Dao extends DaoAbstract
     
     /**
      * 获取单条数据
-     * @param array  $where
+     * @param mixed  $where
      * @param string $fields
      * @param mixed  $order
      * @return ActiveRecord|array
@@ -51,11 +50,11 @@ class Dao extends DaoAbstract
     
     /**
      * 分页查询
-     * @param array  $where
-     * @param string $page
-     * @param string $limit
-     * @param string $fields
-     * @param string $order
+     * @param mixed      $where
+     * @param string|int $page
+     * @param string|int $limit
+     * @param string     $fields
+     * @param string     $order
      * @return ActiveRecord[]
      */
     public function getPage($where = [], $page = '1', $limit = '', $fields = '', $order = '')

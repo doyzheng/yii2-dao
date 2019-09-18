@@ -20,13 +20,13 @@ use yii\helpers\ArrayHelper;
  * @method static array getWhere($where)
  * @method static array getErrors()
  * @method static array getError()
- * @method static void setErrors($error)
+ * @method static bool setErrors($error)
  * @method static Transaction beginTransaction()
  * @method static int getAutoIncrement()
  * @method static string getDbName()
  * @method static string getTableName()
  * @method static string getDefaultOrder()
- * @method static void setSql($sql)
+ * @method static bool setSql($sql)
  * @method static array getSql()
  * @method static string getLastSql()
  * @method static array getAttributes()
@@ -34,7 +34,7 @@ use yii\helpers\ArrayHelper;
  * @method static array getAll($where = [], $fields = '', $order = '')
  * @method static array getPage($where = [], $page = '1', $limit = '', $fields = '', $order = '')
  * @method static int add($data)
- * @method static int addAll($data)
+ * @method static int[] addAll($data)
  * @method static int batchInsert($data)
  * @method static bool update($where, $data)
  * @method static bool updateAll($where, $data)
@@ -67,18 +67,6 @@ abstract class StaticDao
     protected static $asArray = true;
     
     /**
-     * 调用当前静态方法时传入的参数
-     * @var array
-     */
-    protected static $currentCallArgs;
-    
-    /**
-     * 数据访问层对象实例
-     * @var Dao[]
-     */
-    private static $daoInstances;
-    
-    /**
      * 禁止new实例对象
      * StaticDao constructor.
      */
@@ -88,103 +76,62 @@ abstract class StaticDao
     
     /**
      * 魔术方法(调用静态方法)
-     * @param $name
+     * @param $method_name
      * @param $args
      * @return array|mixed
      * @throws UnknownClassException
      */
-    public static function __callStatic($name, $args)
+    public static function __callStatic($method_name, $args)
     {
-        return static::callStatic($name, $args);
+        return static::callStatic($method_name, $args);
     }
     
     /**
      * 调用静态方法
-     * @param $name
-     * @param $args
-     * @return array|mixed
-     * @throws UnknownClassException
-     */
-    public static function callStatic($name, $args)
-    {
-        // 当前调用方法
-        static::$currentCallArgs = [$name, $args];
-        // 调用静态方法之前回调
-        static::beforeCall($name, $args);
-        // 返回缓存数据
-        $key = static::getCurrentCacheKey();
-        if ($result = static::getCache($key)) {
-            return $result;
-        }
-        // 调用Service方法
-        $result = self::call($name, $args);
-        // 是否需要转换到数组
-        $result = static::toArray($result);
-        // 调用静态方法后回调
-        static::afterCall($name, $args, $result);
-        return $result;
-    }
-    
-    /**
-     * 调用Dao方法
-     * @param string $name
+     * @param string $method_name
      * @param array  $args
      * @return mixed
      * @throws UnknownClassException
      */
-    private static function call($name, $args)
+    public static function callStatic($method_name, $args)
     {
-        $dao = self::getDao();
-        if ($dao->hasMethod($name)) {
-            return call_user_func_array([$dao, $name], $args);
-        }
-        // Dao方法不存在
-        throw new UnknownMethodException($name);
+        return static::toArray(self::call($method_name, $args));
     }
     
     /**
-     * 数据访问层对象实例
+     * 调用Dao实例方法
+     * @param string $method_name
+     * @param array  $args
+     * @return mixed
+     * @throws UnknownClassException
+     */
+    private static function call($method_name, $args)
+    {
+        $dao = self::getDao();
+        if ($dao->hasMethod($method_name)) {
+            return call_user_func_array([$dao, $method_name], $args);
+        }
+        // Dao方法不存在
+        throw new UnknownMethodException($method_name);
+    }
+    
+    /**
+     * 获取数据访问层对象实例(单例)
      * @return Dao
      * @throws UnknownClassException
      */
     public static function getDao()
     {
-        if (empty(self::$daoInstances[static::$modelClass])) {
-            $config                                  = [
+        $id  = 'Dao' . static::$modelClass;
+        $dao = Container::get($id);
+        if (!$dao) {
+            $dao = new Dao([
                 'modelClass' => static::modelClass(),
-                'baseWhere'  => static::baseWhere()
-            ];
-            self::$daoInstances[static::$modelClass] = new Dao($config);
+                'baseWhere'  => static::baseWhere(),
+            ]);
+            Container::set($id, $dao);
         }
-        return self::$daoInstances[static::$modelClass];
-    }
-    
-    /**
-     * 在调用静态方法之前回调
-     * @param string $name
-     * @param array  $arguments
-     */
-    protected static function beforeCall($name = '', $arguments = [])
-    {
-    }
-    
-    /**
-     * 在调用静态方法之后回调
-     * @param string $name
-     * @param array  $arguments
-     * @param mixed  $result
-     */
-    protected static function afterCall($name, $arguments, $result)
-    {
-    }
-    
-    /**
-     * 根据当前调用参数返回缓存key
-     * @return string
-     */
-    private static function getCurrentCacheKey()
-    {
-        return md5(json_encode([static::$modelClass, static::$currentCallArgs]));
+        return $dao;
     }
     
     /**
@@ -195,19 +142,37 @@ abstract class StaticDao
      */
     protected static function toArray($result)
     {
-        if (static::asArray() && ($result instanceof Model || is_array($result))) {
-            return ArrayHelper::toArray($result);
+        if (static::asArray()) {
+            if ($result instanceof Model) {
+                return ArrayHelper::toArray($result);
+            }
+            if (is_array($result) && isset($result[0]) && $result[0] instanceof Model) {
+                return ArrayHelper::toArray($result);
+            }
         }
         return $result;
     }
     
     /**
+     * 查询结果转换为数组
+     * @param bool $value
+     * @return bool
+     */
+    public static function asArray($value = null)
+    {
+        if ($value !== null) {
+            static::$asArray = $value;
+        }
+        return static::$asArray;
+    }
+    
+    /**
      * 获取模型层类名
-     * @param string $modelClass
+     * @param object $modelClass
      * @return string
      * @throws UnknownClassException
      */
-    public static function modelClass($modelClass = '')
+    public static function modelClass($modelClass = null)
     {
         if ($modelClass) {
             if (is_object($modelClass)) {
@@ -233,59 +198,6 @@ abstract class StaticDao
             static::getDao()->setBaseWhere($baseWhere);
         }
         return static::$baseWhere;
-    }
-    
-    /**
-     * 查询结果转换为数组
-     * @param bool $value
-     * @return bool
-     */
-    public static function asArray($value = null)
-    {
-        if ($value !== null) {
-            static::$asArray = $value;
-        }
-        return static::$asArray;
-    }
-    
-    /**
-     * 使用缓存
-     * @param      $value
-     * @param null $duration
-     * @return mixed
-     */
-    public static function cache($value, $duration = null)
-    {
-        if ($value) {
-            $key  = static::getCurrentCacheKey();
-            $data = static::getCache($key);
-            if (!$data || $duration !== null) {
-                static::setCache($key, $value, $duration);
-            }
-        }
-        return $value;
-    }
-    
-    /**
-     * 获取缓存值
-     * @param string $key 缓存条件
-     * @return mixed
-     */
-    protected static function getCache($key)
-    {
-        return null;
-    }
-    
-    /**
-     * 设置缓存
-     * @param array $condition 缓存条件
-     * @param mixed $value
-     * @param mixed $duration
-     * @return bool
-     */
-    protected static function setCache($key, $value, $duration)
-    {
-        return false;
     }
     
 }

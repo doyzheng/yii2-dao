@@ -2,9 +2,10 @@
 
 namespace doyzheng\yii2dao;
 
-use Yii;
 use Exception;
+use Yii;
 use yii\base\Component;
+use yii\caching\Dependency;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
 use yii\db\Transaction;
@@ -40,6 +41,16 @@ abstract class DaoAbstract extends Component
      * @var bool 是否保存sql语句
      */
     public $isSaveSql = YII_DEBUG;
+    
+    /**
+     * @var string 缓存时间
+     */
+    public $duration;
+    
+    /**
+     * @var Dependency 缓存依赖
+     */
+    public $dependency;
     
     /**
      * 保存执行过的sql
